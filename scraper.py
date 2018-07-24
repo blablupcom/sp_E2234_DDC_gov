@@ -85,8 +85,8 @@ def convert_mth_strings ( mth_string ):
 
 #### VARIABLES 1.0
 
-entity_id = "E1232_CBC_gov"
-url = "https://www.dorsetforyou.gov.uk/your-council/about-your-council/budgets-and-spending/open-data-and-transparency/payments-to-suppliers-christchurch-borough-council.aspx"
+entity_id = "E2234_DDC_gov"
+url = "https://www.dover.gov.uk/Corporate-Information/Financial-Information/Payments-over-250/Payments-Over-250.aspx"
 errors = 0
 data = []
 
@@ -98,26 +98,42 @@ soup = BeautifulSoup(html, 'lxml')
 
 #### SCRAPE DATA
 
-links = soup.find('main', id='main').find_all('li')
-for link in links:
-    if 'http' not in link.find('a')['href']:
-        url = 'https://www.dorsetforyou.gov.uk/' + link.find('a')['href'][1:]
+year_links = soup.find('h2', text=re.compile('Previous Years')).find_next('ul').find_all('li')
+for year_link in year_links:
+    if 'http' not in year_link.find('a')['href']:
+        year_url = 'https://www.dover.gov.uk' + year_link.find('a')['href']
     else:
-        url = link.find('a')['href'][1:]
-    if '.xlsx' in url or '.xls' in url or '.csv' in url:
-        file_name = link.text.strip()
-        csvYr = link.text.strip()[-4:]
-        if 'Q4' in file_name:
-            csvMth = 'Q1'
-        if 'Q3' in file_name:
-            csvMth = 'Q4'
-        if 'Q2' in file_name:
-            csvMth = 'Q3'
-        if 'Q1' in file_name:
-            csvMth = 'Q2'
-        csvMth = convert_mth_strings(csvMth.upper())
-        data.append([csvYr, csvMth, url])
-
+        year_url = year_link.find('a')['href']
+    year_html = urllib2.urlopen(year_url)
+    year_soup = BeautifulSoup(year_html, 'lxml')
+    blocks = year_soup.find('div', 'sys_maincontent').find_all('a', href=True)
+    for block in blocks:
+        if '.csv' in block['href']:
+            url = block['href']
+            if 'http' not in url:
+                url = 'https://www.dover.gov.uk' + url
+            else:
+                url = url
+            file_name = block.text.strip().replace('Supplier Spend', '').strip()
+            csvMth = file_name[:3]
+            csvYr = file_name.split()[1][:4]
+            csvMth = convert_mth_strings(csvMth.upper())
+            data.append([csvYr, csvMth, url])
+current_blocks = soup.find('h2', text=re.compile('Payments over')).find_all_next('ul')
+for current_block in current_blocks:
+    links = current_block.find_all('a')
+    for link in links:
+        if '.csv' in link['href']:
+            url = link['href']
+            if 'http' not in url:
+                url = 'https://www.dover.gov.uk' + url
+            else:
+                url = url
+            file_name = link.text.strip().replace('Supplier Spend', '').strip()
+            csvMth = file_name[:3]
+            csvYr = file_name.split()[1][:4]
+            csvMth = convert_mth_strings(csvMth.upper())
+            data.append([csvYr, csvMth, url])
 
 #### STORE DATA 1.0
 
